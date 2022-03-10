@@ -15,7 +15,7 @@
           <value>
             <DeploySamConfig>
               <option name="autoExecute" value="true" />
-              <option name="bucketName" value="aws-sam-cli-managed-default-samclisourcebucket-75bgdis8b0wu" />
+              <option name="bucketName" value="aws-sam-cli-managed-default-samclisourcebucket-8vazr433is4p" />
               <option name="enabledCapabilities">
                 <list>
                   <option value="IAM" />
@@ -23,8 +23,7 @@
                   <option value="AUTO_EXPAND" />
                 </list>
               </option>
-              <option name="stackName" value="vcatak-nested-app-stack" />
-              <option name="useContainer" value="true" />
+              <option name="stackName" value="vcatak-main-app" />
             </DeploySamConfig>
           </value>
         </entry>

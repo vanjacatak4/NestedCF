@@ -7,7 +7,7 @@ Description: >
 
 Parameters:
 
-  Environment:
+  AWSEnvironment:
     Description: App environment
     Type: String
     Default: dev
@@ -17,49 +17,73 @@ Parameters:
       - prod
     ConstraintDescription: "Please specify the environment [ dev | test | prod ]"
 
-  TemplateStorageBucket:
-    Description: Bucket where templates are stored
-    Type: String
+Mappings:
+  Environment:
+    dev:
+      DeploymetPrefix: vcatak-application
+      AdminEmail: vcatak@iolap.com
+    test:
+      DeploymetPrefix: vcatak-application
+      AdminEmail: vcatak@iolap.com
+    prod:
+      DeploymetPrefix: vcatak-application
+      AdminEmail: vcatak@iolap.com
+
 
 Resources:
 
+  ### SSM Parameters for nested CF templates
+
+  AdminEmailParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /adminEmail
+      Description: Applications deployment prefix
+      Tier: Standard
+      Type: String
+      Value: !FindInMap [ Environment , !Ref AWSEnvironment, AdminEmail]
+
+
+  ### SSM Parameter for lambda functions ###
+
+#  SSMSystemParameters:
+#    Type: AWS::SSM::Parameter
+#    Properties:
+#      Name: !Join ["/", [ !Ref DeploymentNamePrefix,  "ApplicationParameters"]]
+#      Type: String
+#      Value: !Sub
+#        "{
+#          	\"GENERAL\": {
+#          		\"Environment\": \"${Environment}\",
+#          		\"DeploymentNamePrefix\": \"${DeploymentNamePrefix}\"
+#          	}
+#          }"
+
+  VcatakCognitoPoolStack:
+    DependsOn: AdminEmailParameter
+    Type: AWS::Serverless::Application
+    Properties:
+      Location: templates/COGNITO.yaml
+      Parameters:
+        Environment: !Ref AWSEnvironment
+        DeploymentPrefix: !FindInMap [ Environment , !Ref AWSEnvironment, DeploymetPrefix]
+        AdminEmail: /adminEmail
+
   VcatakAPIStack:
+    DependsOn: VcatakCognitoPoolStack
     Type: AWS::Serverless::Application
     Properties:
       Location: templates/API.yaml
-#    Type: AWS::CloudFormation::Stack
-#    Properties:
-#      TemplateURL: !Sub "https://s3.amazonaws.com/${TemplateStorageBucket}/API.yaml"
-#      Parameters:
-#        TemplateStorageBucket: !Ref TemplateStorageBucket
-
-
-
-
-
-#  HelloWorldFunction:
-#    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-#    Properties:
-#      CodeUri: hello_world/
-#      Handler: app.lambda_handler
-#      Runtime: python3.8
-#      Events:
-#        HelloWorld:
-#          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
-#          Properties:
-#            Path: /hello
-#            Method: get
-
-#Outputs:
-#  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-#  # Find out more about other implicit resources you can reference within SAM
-#  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-#  HelloWorldApi:
-#    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
-#    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
-#  HelloWorldFunction:
-#    Description: "Hello World Lambda Function ARN"
-#    Value: !GetAtt HelloWorldFunction.Arn
-#  HelloWorldFunctionIamRole:
-#    Description: "Implicit IAM Role created for Hello World function"
-#    Value: !GetAtt HelloWorldFunctionRole.Arn
+      Parameters:
+        UserPoolId:
+          Fn::GetAtt: [ VcatakCognitoPoolStack, Outputs.UserPoolId ]
+#          Fn::ImportValue: !Join [":", [
+#            !FindInMap [ Environment , !Ref AWSEnvironment, DeploymetPrefix],
+#            "UserPoolId"
+#          ]]
+        Audience:
+          Fn::GetAtt: [ VcatakCognitoPoolStack, Outputs.UserPoolClientId ]
+#          Fn::ImportValue: !Join [":", [
+#            !FindInMap [ Environment , !Ref AWSEnvironment, DeploymetPrefix],
+#            "UserPoolClientId"
+#          ]]

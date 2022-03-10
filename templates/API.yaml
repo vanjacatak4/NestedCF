@@ -1,17 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Hello world event handler API Gateway
+Description: HTTP API
 
 Globals:
-  Api:
-    TracingEnabled: true
-    Cors:                           # see CORS section
-      AllowOrigin: "'https://example.com'"
-      AllowHeaders: "'Content-Type,Authorization,X-Amz-Date'"
-      MaxAge: "'300'"
+
   Function:
     Timeout: 5
     Runtime: python3.8
+    Handler: app.lambda_handler
     Tracing: Active
     Environment:
       Variables:
@@ -22,16 +18,99 @@ Globals:
         POWERTOOLS_SERVICE_NAME: vcatak-service
 
 
+Parameters:
+
+  UserPoolId:
+    Type: String
+    Description: User poolID for Cognito provider
+  Audience:
+    Type: String
+    Description: Client id for user pool
+
+
 Resources:
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowMethods:
+          - GET
+        AllowOrigins:
+          - "*"
+      Auth:
+        Authorizers:
+          OAuth2Authorizer:
+            AuthorizationScopes:
+              - email
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPoolId}
+              audience:
+                - !Ref Audience
+            IdentitySource: "$request.header.Authorization"
+
+
+
   ApiFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: app.lambda_handler
       CodeUri: ../src/
       Description: API handler function
       Events:
         ApiEvent:
-          Type: Api
+          Type: HttpApi
           Properties:
-            Path: /{proxy+}  # Send requests on any path to the lambda function
-            Method: ANY  #
+            Path: /hello
+            Method: get
+            ApiId: !Ref HttpApi
+
+  AdminApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/
+      Description: API handler function
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            Path: /admin
+            Method: GET
+            ApiId: !Ref HttpApi
+            Auth:
+              Authorizer: OAuth2Authorizer
+              AuthorizationScopes:
+                - !Sub Admins-${Audience}
+
+  SULambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            Auth:
+              Authorizer: OAuth2Authorizer
+              AuthorizationScopes:
+                - !Sub SU-${Audience}
+            Path: /su
+            Method: get
+            ApiId: !Ref HttpApi
+
+  # Route for Admins and SU only: requires custom token (see cognito example)
+  BothLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src/
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            Auth:
+              Authorizer: OAuth2Authorizer
+              AuthorizationScopes:
+                - !Sub Admins-${Audience}
+                - !Sub SU-${Audience}
+            Path: /both
+            Method: get
+            ApiId: !Ref HttpApi
