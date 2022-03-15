@@ -250,3 +250,4 @@ build.toml
 .idea
 .idea/*
 samconfig.toml
+.personal_token
