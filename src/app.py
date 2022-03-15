@@ -48,6 +48,7 @@ def handle_not_found_errors(exc: NotFoundError) -> Response:
         body="I'm a teapot!"
     )
 
+
 # You can continue to use other utilities just as before
 @logger.inject_lambda_context(correlation_id_path=correlation_paths.API_GATEWAY_HTTP)
 @tracer.capture_lambda_handler

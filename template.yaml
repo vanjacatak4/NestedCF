@@ -37,7 +37,7 @@ Resources:
   AdminEmailParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: /adminEmail
+      Name: !Sub "/${AWSEnvironment}/adminEmail"
       Description: Applications deployment prefix
       Tier: Standard
       Type: String
@@ -67,7 +67,7 @@ Resources:
       Parameters:
         Environment: !Ref AWSEnvironment
         DeploymentPrefix: !FindInMap [ Environment , !Ref AWSEnvironment, DeploymetPrefix]
-        AdminEmail: /adminEmail
+        AdminEmail: !Sub "/${AWSEnvironment}/adminEmail"
 
   VcatakAPIStack:
     DependsOn: VcatakCognitoPoolStack
